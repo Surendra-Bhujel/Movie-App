@@ -1,16 +1,15 @@
 import { createContext, useState, useContext, useEffect } from "react";
-
 import { apiRequest } from "../services/movieApi";
 
 const AuthContext = createContext();
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-
+  
   if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
-
+  
   return context;
 };
 
@@ -24,27 +23,42 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // Check for stored token and user
+        const storedToken = localStorage.getItem("cineverseToken");
         const storedUser = localStorage.getItem("cineverseUser");
 
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
-        }
+        // If we have a token but no user, fetch user data
+        if (storedToken) {
+          if (storedUser) {
+            setUser(JSON.parse(storedUser));
+          }
 
-        const response = await apiRequest.get("/auth/me");
+          // Always verify token with backend
+          const response = await apiRequest.get("/auth/me");
 
-        if (response.data?.success && response.data?.user) {
-          const currentUser = response.data.user;
-
-          setUser(currentUser);
-
-          localStorage.setItem("cineverseUser", JSON.stringify(currentUser));
+          if (response.data?.success && response.data?.user) {
+            const currentUser = response.data.user;
+            setUser(currentUser);
+            localStorage.setItem("cineverseUser", JSON.stringify(currentUser));
+          } else {
+            // If verification fails, clear everything
+            setUser(null);
+            localStorage.removeItem("cineverseToken");
+            localStorage.removeItem("cineverseUser");
+          }
+        } else {
+          // No token, clear user
+          setUser(null);
+          localStorage.removeItem("cineverseUser");
         }
       } catch (error) {
         if (error.response?.status !== 401) {
           console.error("Auth check error:", error);
         }
-
+        
+        // Clear everything on error
         setUser(null);
+        localStorage.removeItem("cineverseToken");
         localStorage.removeItem("cineverseUser");
       } finally {
         setLoading(false);
@@ -67,10 +81,13 @@ export const AuthProvider = ({ children }) => {
 
       if (response.data?.success) {
         const registeredUser = response.data.user;
+        const token = response.data.token;
 
         setUser(registeredUser);
-
+        
+        // Store both user and token
         localStorage.setItem("cineverseUser", JSON.stringify(registeredUser));
+        localStorage.setItem("cineverseToken", token);
 
         return {
           success: true,
@@ -84,7 +101,7 @@ export const AuthProvider = ({ children }) => {
       };
     } catch (error) {
       console.error("Registration error:", error);
-
+      
       return {
         success: false,
         message:
@@ -106,10 +123,13 @@ export const AuthProvider = ({ children }) => {
 
       if (response.data?.success) {
         const loggedInUser = response.data.user;
+        const token = response.data.token;
 
         setUser(loggedInUser);
-
+        
+        // Store both user and token
         localStorage.setItem("cineverseUser", JSON.stringify(loggedInUser));
+        localStorage.setItem("cineverseToken", token);
 
         return {
           success: true,
@@ -123,7 +143,7 @@ export const AuthProvider = ({ children }) => {
       };
     } catch (error) {
       console.error("Login error:", error);
-
+      
       return {
         success: false,
         message:
@@ -141,8 +161,10 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
+      // Clear everything
       setUser(null);
       localStorage.removeItem("cineverseUser");
+      localStorage.removeItem("cineverseToken");
     }
   };
 
