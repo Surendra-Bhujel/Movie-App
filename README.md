@@ -2,6 +2,9 @@
 
 A full-stack movie discovery and management application built with modern web technologies. Browse movies, manage your watchlist, and explore detailed information about your favorite films.
 
+🌐 Live Demo
+
+Live Application: https://movie-app-frontend-g51p.onrender.com
 ## ✨ Features
 
 - 🎞️ **Movie Discovery** - Browse and search through a vast collection of movies
